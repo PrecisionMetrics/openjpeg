@@ -1,3 +1,4 @@
+> ⚠ This Repository has 3 changes not included in Upstream. Be careful to preserve those changes when updating to latest. See commit history for more context
 
 # OPENJPEG Library and Applications
 
