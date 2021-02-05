@@ -229,6 +229,8 @@ static void encode_help_display(void)
     fprintf(stdout, "    Write SOP marker before each packet.\n");
     fprintf(stdout, "-EPH\n");
     fprintf(stdout, "    Write EPH marker after each header packet.\n");
+    fprintf(stdout, "-PLT\n");
+    fprintf(stdout, "    Write PLT marker in tile-part header.\n");
     fprintf(stdout, "-M <key value>\n");
     fprintf(stdout, "    Mode switch.\n");
     fprintf(stdout, "    [1=BYPASS(LAZY) 2=RESET 4=RESTART(TERMALL)\n");
@@ -299,6 +301,10 @@ static void encode_help_display(void)
     fprintf(stdout, "    Currently supports only RPCL order.\n");
     fprintf(stdout, "-C <comment>\n");
     fprintf(stdout, "    Add <comment> in the comment marker segment.\n");
+    if (opj_has_thread_support()) {
+        fprintf(stdout, "  -threads <num_threads|ALL_CPUS>\n"
+                "    Number of threads to use for encoding or ALL_CPUS for all available cores.\n");
+    }
     /* UniPG>> */
 #ifdef USE_JPWL
     fprintf(stdout, "-W <params>\n");
@@ -576,7 +582,9 @@ static int parse_cmdline_encoder(int argc, char **argv,
                                  opj_cparameters_t *parameters,
                                  img_fol_t *img_fol, raw_cparameters_t *raw_cp, char *indexfilename,
                                  size_t indexfilename_size,
-                                 int* pOutFramerate)
+                                 int* pOutFramerate,
+                                 OPJ_BOOL* pOutPLT,
+                                 int* pOutNumThreads)
 {
     OPJ_UINT32 i, j;
     int totlen, c;
@@ -592,7 +600,9 @@ static int parse_cmdline_encoder(int argc, char **argv,
         {"ROI", REQ_ARG, NULL, 'R'},
         {"jpip", NO_ARG, NULL, 'J'},
         {"mct", REQ_ARG, NULL, 'Y'},
-        {"IMF", REQ_ARG, NULL, 'Z'}
+        {"IMF", REQ_ARG, NULL, 'Z'},
+        {"PLT", NO_ARG, NULL, 'A'},
+        {"threads",   REQ_ARG, NULL, 'B'}
     };
 
     /* parse the command line */
@@ -1670,6 +1680,26 @@ static int parse_cmdline_encoder(int argc, char **argv,
         break;
         /* ------------------------------------------------------ */
 
+        case 'A': {         /* PLT markers */
+            *pOutPLT = OPJ_TRUE;
+        }
+        break;
+
+        /* ----------------------------------------------------- */
+        case 'B': { /* Number of threads */
+            if (strcmp(opj_optarg, "ALL_CPUS") == 0) {
+                *pOutNumThreads = opj_get_num_cpus();
+                if (*pOutNumThreads == 1) {
+                    *pOutNumThreads = 0;
+                }
+            } else {
+                sscanf(opj_optarg, "%d", pOutNumThreads);
+            }
+        }
+        break;
+
+        /* ------------------------------------------------------ */
+
 
         default:
             fprintf(stderr, "[WARNING] An invalid option has been ignored\n");
@@ -1848,6 +1878,9 @@ int main(int argc, char **argv)
     int framerate = 0;
     OPJ_FLOAT64 t = opj_clock();
 
+    OPJ_BOOL PLT = OPJ_FALSE;
+    int num_threads = 0;
+
     /* set encoding parameters to default values */
     opj_set_default_encoder_parameters(&parameters);
 
@@ -1867,7 +1900,7 @@ int main(int argc, char **argv)
     parameters.tcp_mct = (char)
                          255; /* This will be set later according to the input image or the provided option */
     if (parse_cmdline_encoder(argc, argv, &parameters, &img_fol, &raw_cp,
-                              indexfilename, sizeof(indexfilename), &framerate) == 1) {
+                              indexfilename, sizeof(indexfilename), &framerate, &PLT, &num_threads) == 1) {
         ret = 1;
         goto fin;
     }
@@ -2111,6 +2144,26 @@ int main(int argc, char **argv)
         }
         if (! opj_setup_encoder(l_codec, &parameters, image)) {
             fprintf(stderr, "failed to encode image: opj_setup_encoder\n");
+            opj_destroy_codec(l_codec);
+            opj_image_destroy(image);
+            ret = 1;
+            goto fin;
+        }
+
+        if (PLT) {
+            const char* const options[] = { "PLT=YES", NULL };
+            if (!opj_encoder_set_extra_options(l_codec, options)) {
+                fprintf(stderr, "failed to encode image: opj_encoder_set_extra_options\n");
+                opj_destroy_codec(l_codec);
+                opj_image_destroy(image);
+                ret = 1;
+                goto fin;
+            }
+        }
+
+        if (num_threads >= 1 &&
+                !opj_codec_set_threads(l_codec, num_threads)) {
+            fprintf(stderr, "failed to set number of threads\n");
             opj_destroy_codec(l_codec);
             opj_image_destroy(image);
             ret = 1;

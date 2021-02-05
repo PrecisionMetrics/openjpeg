@@ -194,10 +194,12 @@ static void opj_get_all_encoding_parameters(const opj_image_t *p_image,
  * @param   p_image     the image used to initialize the packet iterator (in fact only the number of components is relevant.
  * @param   p_cp        the coding parameters.
  * @param   tileno  the index of the tile from which creating the packet iterator.
+ * @param   manager Event manager
  */
 static opj_pi_iterator_t * opj_pi_create(const opj_image_t *p_image,
         const opj_cp_t *p_cp,
-        OPJ_UINT32 tileno);
+        OPJ_UINT32 tileno,
+        opj_event_mgr_t* manager);
 /**
  * FIXME DOC
  */
@@ -232,17 +234,18 @@ static OPJ_BOOL opj_pi_check_next_level(OPJ_INT32 pos,
 ==========================================================
 */
 
-static void opj_pi_emit_error(opj_pi_iterator_t * pi, const char* msg)
-{
-    (void)pi;
-    (void)msg;
-}
-
 static OPJ_BOOL opj_pi_next_lrcp(opj_pi_iterator_t * pi)
 {
     opj_pi_comp_t *comp = NULL;
     opj_pi_resolution_t *res = NULL;
     OPJ_UINT32 index = 0;
+
+    if (pi->poc.compno0 >= pi->numcomps ||
+            pi->poc.compno1 >= pi->numcomps + 1) {
+        opj_event_msg(pi->manager, EVT_ERROR,
+                      "opj_pi_next_lrcp(): invalid compno0/compno1\n");
+        return OPJ_FALSE;
+    }
 
     if (!pi->first) {
         comp = &pi->comps[pi->compno];
@@ -274,7 +277,7 @@ static OPJ_BOOL opj_pi_next_lrcp(opj_pi_iterator_t * pi)
                     /* include should be resized when a POC arises, or */
                     /* the POC should be rejected */
                     if (index >= pi->include_size) {
-                        opj_pi_emit_error(pi, "Invalid access to pi->include");
+                        opj_event_msg(pi->manager, EVT_ERROR, "Invalid access to pi->include");
                         return OPJ_FALSE;
                     }
                     if (!pi->include[index]) {
@@ -296,6 +299,13 @@ static OPJ_BOOL opj_pi_next_rlcp(opj_pi_iterator_t * pi)
     opj_pi_comp_t *comp = NULL;
     opj_pi_resolution_t *res = NULL;
     OPJ_UINT32 index = 0;
+
+    if (pi->poc.compno0 >= pi->numcomps ||
+            pi->poc.compno1 >= pi->numcomps + 1) {
+        opj_event_msg(pi->manager, EVT_ERROR,
+                      "opj_pi_next_rlcp(): invalid compno0/compno1\n");
+        return OPJ_FALSE;
+    }
 
     if (!pi->first) {
         comp = &pi->comps[pi->compno];
@@ -320,7 +330,7 @@ static OPJ_BOOL opj_pi_next_rlcp(opj_pi_iterator_t * pi)
                     index = pi->layno * pi->step_l + pi->resno * pi->step_r + pi->compno *
                             pi->step_c + pi->precno * pi->step_p;
                     if (index >= pi->include_size) {
-                        opj_pi_emit_error(pi, "Invalid access to pi->include");
+                        opj_event_msg(pi->manager, EVT_ERROR, "Invalid access to pi->include");
                         return OPJ_FALSE;
                     }
                     if (!pi->include[index]) {
@@ -342,6 +352,13 @@ static OPJ_BOOL opj_pi_next_rpcl(opj_pi_iterator_t * pi)
     opj_pi_comp_t *comp = NULL;
     opj_pi_resolution_t *res = NULL;
     OPJ_UINT32 index = 0;
+
+    if (pi->poc.compno0 >= pi->numcomps ||
+            pi->poc.compno1 >= pi->numcomps + 1) {
+        opj_event_msg(pi->manager, EVT_ERROR,
+                      "opj_pi_next_rpcl(): invalid compno0/compno1\n");
+        return OPJ_FALSE;
+    }
 
     if (!pi->first) {
         goto LABEL_SKIP;
@@ -451,7 +468,7 @@ static OPJ_BOOL opj_pi_next_rpcl(opj_pi_iterator_t * pi)
                         index = pi->layno * pi->step_l + pi->resno * pi->step_r + pi->compno *
                                 pi->step_c + pi->precno * pi->step_p;
                         if (index >= pi->include_size) {
-                            opj_pi_emit_error(pi, "Invalid access to pi->include");
+                            opj_event_msg(pi->manager, EVT_ERROR, "Invalid access to pi->include");
                             return OPJ_FALSE;
                         }
                         if (!pi->include[index]) {
@@ -474,6 +491,13 @@ static OPJ_BOOL opj_pi_next_pcrl(opj_pi_iterator_t * pi)
     opj_pi_comp_t *comp = NULL;
     opj_pi_resolution_t *res = NULL;
     OPJ_UINT32 index = 0;
+
+    if (pi->poc.compno0 >= pi->numcomps ||
+            pi->poc.compno1 >= pi->numcomps + 1) {
+        opj_event_msg(pi->manager, EVT_ERROR,
+                      "opj_pi_next_pcrl(): invalid compno0/compno1\n");
+        return OPJ_FALSE;
+    }
 
     if (!pi->first) {
         comp = &pi->comps[pi->compno];
@@ -582,7 +606,7 @@ static OPJ_BOOL opj_pi_next_pcrl(opj_pi_iterator_t * pi)
                         index = pi->layno * pi->step_l + pi->resno * pi->step_r + pi->compno *
                                 pi->step_c + pi->precno * pi->step_p;
                         if (index >= pi->include_size) {
-                            opj_pi_emit_error(pi, "Invalid access to pi->include");
+                            opj_event_msg(pi->manager, EVT_ERROR, "Invalid access to pi->include");
                             return OPJ_FALSE;
                         }
                         if (!pi->include[index]) {
@@ -605,6 +629,13 @@ static OPJ_BOOL opj_pi_next_cprl(opj_pi_iterator_t * pi)
     opj_pi_comp_t *comp = NULL;
     opj_pi_resolution_t *res = NULL;
     OPJ_UINT32 index = 0;
+
+    if (pi->poc.compno0 >= pi->numcomps ||
+            pi->poc.compno1 >= pi->numcomps + 1) {
+        opj_event_msg(pi->manager, EVT_ERROR,
+                      "opj_pi_next_cprl(): invalid compno0/compno1\n");
+        return OPJ_FALSE;
+    }
 
     if (!pi->first) {
         comp = &pi->comps[pi->compno];
@@ -710,7 +741,7 @@ static OPJ_BOOL opj_pi_next_cprl(opj_pi_iterator_t * pi)
                         index = pi->layno * pi->step_l + pi->resno * pi->step_r + pi->compno *
                                 pi->step_c + pi->precno * pi->step_p;
                         if (index >= pi->include_size) {
-                            opj_pi_emit_error(pi, "Invalid access to pi->include");
+                            opj_event_msg(pi->manager, EVT_ERROR, "Invalid access to pi->include");
                             return OPJ_FALSE;
                         }
                         if (!pi->include[index]) {
@@ -920,7 +951,7 @@ static void opj_get_all_encoding_parameters(const opj_image_t *p_image,
         OPJ_UINT32 l_tcx0, l_tcy0, l_tcx1, l_tcy1;
         OPJ_UINT32 l_pdx, l_pdy, l_pw, l_ph;
 
-        lResolutionPtr = p_resolutions[compno];
+        lResolutionPtr = p_resolutions ? p_resolutions[compno] : NULL;
 
         l_tcx0 = opj_uint_ceildiv(*p_tx0, l_img_comp->dx);
         l_tcy0 = opj_uint_ceildiv(*p_ty0, l_img_comp->dy);
@@ -941,8 +972,10 @@ static void opj_get_all_encoding_parameters(const opj_image_t *p_image,
             /* precinct width and height*/
             l_pdx = l_tccp->prcw[resno];
             l_pdy = l_tccp->prch[resno];
-            *lResolutionPtr++ = l_pdx;
-            *lResolutionPtr++ = l_pdy;
+            if (lResolutionPtr) {
+                *lResolutionPtr++ = l_pdx;
+                *lResolutionPtr++ = l_pdy;
+            }
             if (l_pdx + l_level_no < 32 &&
                     l_img_comp->dx <= UINT_MAX / (1u << (l_pdx + l_level_no))) {
                 l_dx = l_img_comp->dx * (1u << (l_pdx + l_level_no));
@@ -966,8 +999,10 @@ static void opj_get_all_encoding_parameters(const opj_image_t *p_image,
             py1 = opj_uint_ceildivpow2(l_ry1, l_pdy) << l_pdy;
             l_pw = (l_rx0 == l_rx1) ? 0 : ((l_px1 - l_px0) >> l_pdx);
             l_ph = (l_ry0 == l_ry1) ? 0 : ((py1 - l_py0) >> l_pdy);
-            *lResolutionPtr++ = l_pw;
-            *lResolutionPtr++ = l_ph;
+            if (lResolutionPtr) {
+                *lResolutionPtr++ = l_pw;
+                *lResolutionPtr++ = l_ph;
+            }
             l_product = l_pw * l_ph;
 
             /* update precision*/
@@ -983,7 +1018,8 @@ static void opj_get_all_encoding_parameters(const opj_image_t *p_image,
 
 static opj_pi_iterator_t * opj_pi_create(const opj_image_t *image,
         const opj_cp_t *cp,
-        OPJ_UINT32 tileno)
+        OPJ_UINT32 tileno,
+        opj_event_mgr_t* manager)
 {
     /* loop*/
     OPJ_UINT32 pino, compno;
@@ -1016,6 +1052,8 @@ static opj_pi_iterator_t * opj_pi_create(const opj_image_t *image,
 
     l_current_pi = l_pi;
     for (pino = 0; pino < l_poc_bound ; ++pino) {
+
+        l_current_pi->manager = manager;
 
         l_current_pi->comps = (opj_pi_comp_t*) opj_calloc(image->numcomps,
                               sizeof(opj_pi_comp_t));
@@ -1354,7 +1392,8 @@ static OPJ_BOOL opj_pi_check_next_level(OPJ_INT32 pos,
 */
 opj_pi_iterator_t *opj_pi_create_decode(opj_image_t *p_image,
                                         opj_cp_t *p_cp,
-                                        OPJ_UINT32 p_tile_no)
+                                        OPJ_UINT32 p_tile_no,
+                                        opj_event_mgr_t* manager)
 {
     OPJ_UINT32 numcomps = p_image->numcomps;
 
@@ -1409,7 +1448,7 @@ opj_pi_iterator_t *opj_pi_create_decode(opj_image_t *p_image,
     }
 
     /* memory allocation for pi */
-    l_pi = opj_pi_create(p_image, p_cp, p_tile_no);
+    l_pi = opj_pi_create(p_image, p_cp, p_tile_no, manager);
     if (!l_pi) {
         opj_free(l_tmp_data);
         opj_free(l_tmp_ptr);
@@ -1550,11 +1589,34 @@ opj_pi_iterator_t *opj_pi_create_decode(opj_image_t *p_image,
 }
 
 
+OPJ_UINT32 opj_get_encoding_packet_count(const opj_image_t *p_image,
+        const opj_cp_t *p_cp,
+        OPJ_UINT32 p_tile_no)
+{
+    OPJ_UINT32 l_max_res;
+    OPJ_UINT32 l_max_prec;
+    OPJ_UINT32 l_tx0, l_tx1, l_ty0, l_ty1;
+    OPJ_UINT32 l_dx_min, l_dy_min;
+
+    /* preconditions in debug*/
+    assert(p_cp != 00);
+    assert(p_image != 00);
+    assert(p_tile_no < p_cp->tw * p_cp->th);
+
+    /* get encoding parameters*/
+    opj_get_all_encoding_parameters(p_image, p_cp, p_tile_no, &l_tx0, &l_tx1,
+                                    &l_ty0, &l_ty1, &l_dx_min, &l_dy_min, &l_max_prec, &l_max_res, NULL);
+
+    return p_cp->tcps[p_tile_no].numlayers * l_max_prec * p_image->numcomps *
+           l_max_res;
+}
+
 
 opj_pi_iterator_t *opj_pi_initialise_encode(const opj_image_t *p_image,
         opj_cp_t *p_cp,
         OPJ_UINT32 p_tile_no,
-        J2K_T2_MODE p_t2_mode)
+        J2K_T2_MODE p_t2_mode,
+        opj_event_mgr_t* manager)
 {
     OPJ_UINT32 numcomps = p_image->numcomps;
 
@@ -1608,7 +1670,7 @@ opj_pi_iterator_t *opj_pi_initialise_encode(const opj_image_t *p_image,
     }
 
     /* memory allocation for pi*/
-    l_pi = opj_pi_create(p_image, p_cp, p_tile_no);
+    l_pi = opj_pi_create(p_image, p_cp, p_tile_no, manager);
     if (!l_pi) {
         opj_free(l_tmp_data);
         opj_free(l_tmp_ptr);
